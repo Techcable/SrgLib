@@ -3,7 +3,7 @@ from enum import Enum, unique
 import srg
 
 
-class Type:
+class Type(object):
     """
     A java class
 
@@ -139,7 +139,7 @@ class PrimitiveType(Type):
 
         :param kind: the kind of this primitive
         """
-        super().__init__()
+        super(PrimitiveType, self).__init__()
         self._kind = kind
 
     def get_kind(self):
@@ -167,7 +167,7 @@ class ArrayType(Type):
 
         :param element_type: the element type of the array
         """
-        super().__init__()
+        super(ArrayType, self).__init__()
         self._type = element_type
 
     def get_element_type(self):
@@ -196,15 +196,15 @@ class PrimitiveKind(Enum):
     void is actually a valid java type (believe it or not)
     """
 
-    BYTE = 0
-    SHORT = 1
-    INT = 2
-    LONG = 3
-    FLOAT = 4
-    DOUBLE = 5
-    CHAR = 6
-    BOOLEAN = 7
-    VOID = 8
+    BYTE = 'B'
+    SHORT = 'S'
+    INT = 'I'
+    LONG = 'J'
+    FLOAT = 'F'
+    DOUBLE = 'D'
+    CHAR = 'C'
+    BOOLEAN = 'Z'
+    VOID = 'V'
 
     def get_descriptor(self):
         """
@@ -212,17 +212,11 @@ class PrimitiveKind(Enum):
 
         :return: the bytecode descriptor of this primitive type
         """
-        return {
-            PrimitiveKind.BYTE: "B",
-            PrimitiveKind.SHORT: "S",
-            PrimitiveKind.INT: "I",
-            PrimitiveKind.LONG: "J",
-            PrimitiveKind.FLOAT: "F",
-            PrimitiveKind.DOUBLE: "D",
-            PrimitiveKind.CHAR: "C",
-            PrimitiveKind.BOOLEAN: "Z",
-            PrimitiveKind.VOID: "V"
-        }[self]
+        return self.value
+
+    @staticmethod
+    def from_descriptor(descriptor):
+        return PrimitiveKind(descriptor)
 
 
 def parse_internal_name(name):
@@ -234,7 +228,6 @@ def parse_internal_name(name):
     :raises ValueError: if the internal name can't be parsed
     """
     return parse_name(name.replace("/", "."))
-
 
 def parse_name(name):
     """
@@ -285,10 +278,10 @@ def parse_descriptor(descriptor):
             return ArrayType(parse_descriptor(descriptor[1:]))
         except ValueError:
             raise ValueError("Couldn't parse descriptor " + descriptor)
-    for primitive in PrimitiveKind:
-        if primitive.get_descriptor() == descriptor:
-            return PrimitiveType(primitive)
     if descriptor.startswith("L") and srg.is_valid_type(descriptor[1:].replace("/", ".")):
         return Type(descriptor[1:-1].replace('/', "."))
+    primitive = PrimitiveKind.from_descriptor(descriptor)
+    if primitive is not None:
+        return PrimitiveType(primitive)
     # Unable to parse
     raise ValueError("Couldn't parse descriptor " + descriptor)

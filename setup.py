@@ -7,5 +7,6 @@ setup(name='SrgLib',
       description='A python library for handling srg files and related stuff)',
       author='Techcable',
       author_emails='Techcable@outlook.com',
-      packages=["srg"]
+      packages=["srg"],
+      requires=["enum34"]
       )

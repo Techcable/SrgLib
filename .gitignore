@@ -7,3 +7,6 @@ DiffUtils.egg-info
 
 # Python
 *.pyc
+
+# A big file I use to test performance:
+joined.srg

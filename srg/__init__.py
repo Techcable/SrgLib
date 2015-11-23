@@ -4,7 +4,7 @@ from collections import namedtuple
 from srg.types import Type
 
 
-class MethodData:
+class MethodData(object):
     def __init__(self, type, name, args, return_type):
         """
         Create a method data object
@@ -51,7 +51,7 @@ class MethodData:
                and self.args == other.args\
                and self.return_type == other.return_type
 
-class FieldData:
+class FieldData(object):
     def __init__(self, type, name):
         """
         Create field data
@@ -231,7 +231,7 @@ def validate_method(method):
 
 # String Validator
 
-_identifier_regex = re.compile("[\w_]+")
+_identifier_regex = re.compile("[\w_\$]+")
 _type_regex = re.compile('([\w_]+[\$\.])*([\w_]+)')
 _package_regex = re.compile('([\w_]+\.)*([\w_]+)')
 
