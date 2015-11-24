@@ -3,7 +3,7 @@
 *.iml
 
 # Pip
-DiffUtils.egg-info
+*.egg-info
 
 # Python
 *.pyc

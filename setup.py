@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup, test
+from setuptools import setup
 
 setup(name='SrgLib',
       version='1.0.0',
