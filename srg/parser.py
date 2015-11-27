@@ -2,7 +2,7 @@ from srg import types, Mappings
 from srg import MethodData, FieldData
 
 
-def parse_srg_file(filename):
+def parse_file(filename):
     """
     Read the srg file and parses into a Mappings object
 
@@ -14,23 +14,23 @@ def parse_srg_file(filename):
     :raises OSError: if an error occurs reading the file
     """
     with open(filename, "rt") as file:
-        return parse_srg(file.readlines())
+        return parse_lines(file)
 
 
-def parse_srg(lines):
+def parse_lines(line_source):
     """
     Parse the lines of a srg file into a Mappings object
 
     Package data is not parsed
 
-    :param lines: the lines of the srg file
+    :param line_source: an iterable object containing the lines of the srg file
     :return: the parsed Mappings object
     :raises ValueError: if parsing error occurs
     """
     methods = dict()
     fields = dict()
     classes = dict()
-    for line in lines:
+    for line in line_source:
         line = line.strip()
         if line.startswith("#") or len(line) == 0:
             continue
@@ -63,6 +63,62 @@ def parse_srg(lines):
     return Mappings(classes, fields, methods)
 
 
+def parse_compact_lines(line_source):
+    """
+    Parse the lines of a compact srg file into a Mappings object
+
+    Traditional srg files are preferred over compact srg files
+    No matter what they say, the original format is bette
+
+    :param line_source: an iterable object containing the lines of the csrg file
+    :return: the parsed Mappings object
+    :raises ValueError: if parsing error occurs
+    """
+    # These only contain type infromation for the original mappings, the renaemd oneshave no type information at all
+    # Methods: method data -> new name
+    # Fields: field data -> new name
+    methods = dict()
+    fields = dict()
+    # These are the type mappings, which we use to fill-in the type information for the method and field mappings
+    classes = dict()
+    for line in line_source:
+        parts = line.split(' ')
+        # Method Mappings
+        if len(parts) == 4:
+            original_type_name = parts[0]
+            original_name = parts[1]
+            original_signature = parts[2]
+            args, return_type = parse_signature(original_signature)
+            original = MethodData(types.parse_internal_name(original_type_name), original_name, args, return_type)
+            renamed = parts[3]
+            methods[original] = renamed
+        # Field mappings
+        elif len(parts) == 3:
+            original_type_name = parts[0]
+            original_name = parts[1]
+            original = FieldData(type=types.parse_internal_name(original_type_name), name=original_name)
+            renamed = parts[2]
+            fields[original] = renamed
+        elif len(parts) == 2:
+            original_name = parts[0]
+            renamed_name = parts[1]
+            original = types.parse_internal_name(original_name)
+            renamed = types.parse_internal_name(renamed_name)
+            classes[original] = renamed
+    mappings = Mappings(classes, dict(), dict())
+    for original, renamed_name in methods.items():
+        renamed_type = mappings.get_class(original.type)
+        renamed_args = [mappings.get_class(original_arg) for original_arg in original.args]
+        renamed_return_type = mappings.get_class(original.return_type)
+        renamed = MethodData(renamed_type, renamed_name, renamed_args, renamed_return_type)
+        mappings.methods[original] = renamed
+    for original, renamed_name in fields.items():
+        renamed_type = mappings.get_class(original.type)
+        renamed = FieldData(renamed_type, renamed_name)
+        mappings.fields[original] = renamed
+    return mappings
+
+
 def parse_method(name, signature):
     """
     Parse the method with the given name and signature into a MethodData object
@@ -72,6 +128,22 @@ def parse_method(name, signature):
     :return: the method as a MethodData object
     :raises ValueError: if the data is invalid
     """
+    name = _split_name(name)
+    args, return_type = parse_signature(signature)
+    return MethodData(type=types.parse_internal_name(name[0]), name=name[1], args=args, return_type=return_type)
+
+
+def parse_signature(signature):
+    """
+    Parse the bytecode-format method signature
+
+    Returns a tuple with a list of argument types and the return type
+
+    :param signature:
+    :return: a tuple with the arguments and the return type (in that order)
+    :raises ValueError: if the signature is invalid
+    """
+
     args = list()
     i = 0
     descriptor = ""
@@ -101,9 +173,7 @@ def parse_method(name, signature):
             descriptor = ""  # Reset the descriptor
     i += 1  # Skip the ')'
     return_type = types.parse_descriptor(signature[i:])
-    name = _split_name(name)
-    return MethodData(type=types.parse_internal_name(name[0]), name=name[1], args=args, return_type=return_type)
-
+    return args, return_type
 
 def parse_field(name):
     """

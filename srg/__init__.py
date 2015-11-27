@@ -51,6 +51,10 @@ class MethodData(object):
                and self.args == other.args\
                and self.return_type == other.return_type
 
+    def __repr__(self):
+        return self.get_internal_name() + " " + self.get_method_signature()
+
+
 class FieldData(object):
     def __init__(self, type, name):
         """
@@ -77,6 +81,10 @@ class FieldData(object):
 
     def __eq__(self, other):
         return isinstance(other, FieldData) and self.get_internal_name() == other.get_internal_name()
+
+    def __repr__(self):
+        return self.get_internal_name()
+
 
 class Mappings:
     """
@@ -117,11 +125,10 @@ class Mappings:
         :param original: the original class name
         :return: the new class name
         """
-        renamed = self.classes[original]
-        if renamed is None:
+        try:
+            return self.classes[original]
+        except KeyError:
             return original
-        else:
-            return renamed
 
     def get_method(self, original):
         """
@@ -132,11 +139,10 @@ class Mappings:
         :param original: the original method data
         :return: the new method data
         """
-        renamed = self.methods[original]
-        if renamed is None:
+        try:
+            return self.methods[original]
+        except KeyError:
             return original
-        else:
-            return renamed
 
     def get_field(self, original):
         """
@@ -147,11 +153,10 @@ class Mappings:
         :param original: the original field data
         :return: the new field data
         """
-        renamed = self.fields[original]
-        if renamed is None:
+        try:
+            renamed = self.fields[original]
+        except KeyError:
             return original
-        else:
-            return renamed
 
     def rename_package(self, original_package, renamed_package):
         """

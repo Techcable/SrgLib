@@ -1,0 +1,14 @@
+org/spigotmc/XRay net/techcable/xray/XRay
+org/spigotmc/XRay$Manager net/techcable/xray/XRayManager
+org/spigotmc/XRay$Injector net/techcable/xray/injector/Injector
+org/spigotmc/XRay$Injector$Manager net/techcable/xray/injector/InjectorManager
+obfs net/techcable/minecraft/NoHax
+obf4 net/techcable/minecraft/Player
+obfs a dead
+obfs b blood
+obfs c health
+obfs d speed
+org/spigotmc/XRay$Injector$Manager taco seriousVariableName
+obfs a (Lobf4;ID)V isHacking
+org/spigotmc/XRay deobfuscate ([BLjava/util/Set;)I doAFunkyDance
+org/spigotmc/XRay$Manager aquire ()Lorg/spigotmc/XRay; get
