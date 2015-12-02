@@ -1,11 +1,11 @@
 import re
-from collections import namedtuple
+from typing import Dict, Iterable, Tuple
 
 from srg.types import Type
 
 
 class MethodData(object):
-    def __init__(self, type, name, args, return_type):
+    def __init__(self, type: Type, name: str, args: Iterable[Type], return_type: Type):
         """
         Create a method data object
 
@@ -14,6 +14,8 @@ class MethodData(object):
         :param args: the method argument types
         :param return_type: the method return types
         """
+        if not is_valid_identifier(name):
+            raise ValueError("Invalid name: " + name)
         self.type = type
         self.name = name
         self.args = tuple(args)
@@ -56,13 +58,15 @@ class MethodData(object):
 
 
 class FieldData(object):
-    def __init__(self, type, name):
+    def __init__(self, type: Type, name: str):
         """
         Create field data
 
         :param type: the type containing the field
         :param name: the name of the field
         """
+        if not is_valid_identifier(name):
+            raise ValueError("Invalid name: " + name)
         self.type = type
         self.name = name
 
@@ -85,15 +89,17 @@ class FieldData(object):
     def __repr__(self):
         return self.get_internal_name()
 
+from srg.mappings import AbstractMappings
 
-class Mappings:
+
+class Mappings(AbstractMappings):
     """
     Java obfuscation mappings
 
     Contains the information to map one set of source identifiers to another
     """
 
-    def __init__(self, class_mappings, field_mappings, method_mappings):
+    def __init__(self, class_mappings: Dict[Type, Type], field_mappings: Dict[FieldData, FieldData], method_mappings: Dict[MethodData, MethodData]):
         """
         Create a new mapping
 
@@ -101,144 +107,59 @@ class Mappings:
         :param field_mappings: a dictionary containing mappings from the old fields to the new ones
         :param method_mappings: a dictionary contianing mappings from the old methods to the new ones
         """
-        for original, renamed in class_mappings.items():
-            if type(original, ) != Type:
-                raise ValueError(original + " is not a valid type")
-            if type(renamed) != Type:
-                raise ValueError(renamed + " is not a valid type")
-        for original, renamed in field_mappings.items():
-            validate_field(original)
-            validate_field(renamed)
-        for original, renamed in method_mappings.items():
-            validate_method(original)
-            validate_method(renamed)
-        self.classes = class_mappings
-        self.fields = field_mappings
-        self.methods = method_mappings
+        self._classes = class_mappings
+        self._fields = field_mappings
+        self._methods = method_mappings
 
-    def get_class(self, original):
-        """
-        Get the new class name
-
-        Returns the original name if no mapping is found
-
-        :param original: the original class name
-        :return: the new class name
-        """
+    def get_class(self, original: Type) -> Type:
         try:
-            return self.classes[original]
+            return self._classes[original]
         except KeyError:
-            return original
+            return super().get_class(original)
 
-    def get_method(self, original):
-        """
-        Get the new method data
-
-        Returns the original name if no mapping is found
-
-        :param original: the original method data
-        :return: the new method data
-        """
+    def get_method(self, original: MethodData) -> MethodData:
         try:
-            return self.methods[original]
+            return self._methods[original]
         except KeyError:
-            return original
+            return super().get_method(original)
 
-    def get_field(self, original):
-        """
-        Get the new field data
-
-        Returns the original name if no mapping is found
-
-        :param original: the original field data
-        :return: the new field data
-        """
+    def get_field(self, original: FieldData) -> FieldData:
         try:
-            renamed = self.fields[original]
+            return self._fields[original]
         except KeyError:
-            return original
-
-    def rename_package(self, original_package, renamed_package):
-        """
-        Rename all classes with the original package name
-
-        :param original_package: the original package name
-        :param renamed_package: the renamed package name
-        :return: the old mappings
-        """
-        old = self.copy()
-        for original_class, renamed_class in self.classes.items():
-            if original_class.get_package() != original_package:
-                continue
-            if len(renamed_package) > 0:
-                renamed_class = Type(renamed_package + "." + renamed_class.get_simple_name())
-            else:
-                renamed_class = Type(renamed_class.get_simple_name())
-            self.classes[original_class] = renamed_class
-
-        return old
-
-    def invert(self):
-        """
-        Invert the mappings, switching the original and renamed
-        The inverted mappings are a copy of the original mappings
-
-        :return: the inverted mappings
-        """
-        inverted_classes = {renamed: original for original, renamed in self.classes.items()}
-        inverted_fields = {renamed: original for original, renamed in self.fields.items()}
-        inverted_methods = {renamed: original for original, renamed in self.methods.items()}
-        return Mappings(inverted_classes, inverted_fields, inverted_methods)
+            return super().get_field(original)
 
     def copy(self):
-        return Mappings(self.classes.copy(), self.fields.copy(), self.methods().copy())
+        return Mappings(self._classes.copy(), self._fields.copy(), self._methods.copy())
+
+    def methods(self) -> Iterable[Tuple[MethodData, MethodData]]:
+        return self._methods.items()
+
+    def fields(self) -> Iterable[Tuple[FieldData, FieldData]]:
+        return self._fields.items()
+
+    def classes(self) -> Iterable[Tuple[Type, Type]]:
+        return self._classes.items()
+
+    def set_method(self, original: MethodData, renamed: MethodData):
+        self._methods[original] = renamed
+
+    def set_class(self, original: Type, renamed: Type):
+        self._classes[original] = renamed
+
+    def set_field(self, original: FieldData, renamed: FieldData):
+        self._fields[original] = renamed
 
 
 ################
 ## Validation ##
 ################
 
-
-def validate_field(field):
-    """
-    Asserts that the given field is valid
-
-    :param field: the field to check
-    :raises ValueError: if the specified name is invalid
-    """
-    if type(field) is not FieldData:
-        raise ValueError(str(field) + " must be field data")
-    if not is_valid_type(field.type):
-        raise ValueError(field.type + " is not a valid class name for field: " + str(field))
-    if not is_valid_identifier(field.name):
-        raise ValueError(field.name + " is not a valid field name for field: " + str(field))
-
-
-def validate_method(method):
-    """
-    Asserts that the given field is valid
-
-    :param method: the field to check
-    :raises ValueError: if the specified name is invalid
-    """
-    if type(method) is not MethodData:
-        raise ValueError(str(method) + " must be method data")
-    if not is_valid_type(method.type):
-        raise ValueError(method.type + " is not a valid class name for method: " + str(method))
-    if not is_valid_identifier(method.name):
-        raise ValueError(method.name + " is not a valid method name for method: " + str(method))
-    for paramType in method.args:
-        if not is_valid_type(paramType):
-            raise ValueError(paramType + " is not a valid paramater type for method: " + str(method))
-    if not is_valid_type(method.return_type):
-        raise ValueError(method.return_type + " is not a valid return type for method: " + str(method))
-
-
 # String Validator
 
-_identifier_regex = re.compile("[\w_\$]+")
+_identifier_regex = re.compile("[\w_<>\$]+")
 _type_regex = re.compile('([\w_]+[\$\.])*([\w_]+)')
-_package_regex = re.compile('([\w_]+\.)*([\w_]+)')
+_package_regex = re.compile('([\w_]+\.)*([\w_]+)?')
 
 
 def is_valid_identifier(name):
@@ -250,7 +171,7 @@ def is_valid_identifier(name):
     :param name: the name to check
     :return: if valid
     """
-    return _identifier_regex.match(name) is not None
+    return _identifier_regex.fullmatch(name) is not None
 
 
 def is_valid_type(type):
@@ -260,7 +181,7 @@ def is_valid_type(type):
     :param type: the name to validate
     :return: true if valid
     """
-    return isinstance(type, Type) or _type_regex.match(type) is not None
+    return _type_regex.fullmatch(type) is not None
 
 
 def is_valid_package(name):
@@ -270,4 +191,4 @@ def is_valid_package(name):
     :param name: the name to check
     :return: if valid
     """
-    return _package_regex.match(name) is not None
+    return _package_regex.fullmatch(name) is not None

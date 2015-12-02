@@ -23,7 +23,7 @@ class Type(object):
         :raises ValueError: if the name is invalid
         """
         if name is not None:
-            if not srg.is_valid_type(name.replace(".", "/")):
+            if not srg.is_valid_type(name):
                 raise ValueError("Invalid name " + name)
             self._name = name
 
@@ -65,7 +65,7 @@ class Type(object):
         :return: this type's 'simple name'
         """
         if self.is_reference_type():
-            index = self.get_name().rindex(".")
+            index = self.get_name().rfind(".")
             if index > 0:
                 return self.get_name()[index + 1:]
             else:
@@ -111,7 +111,7 @@ class Type(object):
         :raises TypeError: if not a reference type
         """
         self._assert_reference()
-        index = self.get_name().rindex(".")
+        index = self.get_name().rfind(".")
         if index < 0:
             return ""
         else:
@@ -278,7 +278,7 @@ def parse_descriptor(descriptor):
             return ArrayType(parse_descriptor(descriptor[1:]))
         except ValueError:
             raise ValueError("Couldn't parse descriptor " + descriptor)
-    if descriptor.startswith("L") and srg.is_valid_type(descriptor[1:].replace("/", ".")):
+    if descriptor.startswith("L") and srg.is_valid_type(descriptor[1:-1].replace("/", ".")):
         return Type(descriptor[1:-1].replace('/', "."))
     primitive = PrimitiveKind.from_descriptor(descriptor)
     if primitive is not None:

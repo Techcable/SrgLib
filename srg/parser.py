@@ -1,8 +1,10 @@
+from typing import Iterable
+
 from srg import types, Mappings
 from srg import MethodData, FieldData
 
 
-def parse_file(filename):
+def parse_file(filename: str) -> Mappings:
     """
     Read the srg file and parses into a Mappings object
 
@@ -17,7 +19,7 @@ def parse_file(filename):
         return parse_lines(file)
 
 
-def parse_lines(line_source):
+def parse_lines(line_source: Iterable[str]) -> Mappings:
     """
     Parse the lines of a srg file into a Mappings object
 
@@ -63,7 +65,7 @@ def parse_lines(line_source):
     return Mappings(classes, fields, methods)
 
 
-def parse_compact_lines(line_source):
+def parse_compact_lines(line_source: Iterable[str]) -> Mappings:
     """
     Parse the lines of a compact srg file into a Mappings object
 
@@ -111,11 +113,11 @@ def parse_compact_lines(line_source):
         renamed_args = [mappings.get_class(original_arg) for original_arg in original.args]
         renamed_return_type = mappings.get_class(original.return_type)
         renamed = MethodData(renamed_type, renamed_name, renamed_args, renamed_return_type)
-        mappings.methods[original] = renamed
+        mappings.set_method(original, renamed)
     for original, renamed_name in fields.items():
         renamed_type = mappings.get_class(original.type)
         renamed = FieldData(renamed_type, renamed_name)
-        mappings.fields[original] = renamed
+        mappings.set_field(original, renamed)
     return mappings
 
 

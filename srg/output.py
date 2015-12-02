@@ -1,4 +1,9 @@
-def serialize_srg(mappings):
+from typing import Iterator
+
+from srg.mappings import AbstractMappings
+
+
+def serialize_srg(mappings: AbstractMappings) -> Iterator[str]:
     """
     A generator that serializes the lines
 
@@ -8,7 +13,19 @@ def serialize_srg(mappings):
     :return: a generator that serializes the mappings
     :raises ValueError: if the mappings are invalid
     """
-    for original, renamed in mappings.methods.items():
+    for original, renamed in mappings.classes():
+        yield " ".join([
+            "CL:",
+            original.get_internal_name(),
+            renamed.get_internal_name()
+        ])
+    for original, renamed in mappings.fields():
+        yield " ".join([
+            "FD:",
+            original.get_internal_name(),
+            renamed.get_internal_name()
+        ])
+    for original, renamed in mappings.methods():
         yield " ".join([
             "MD:",
             # Original method
@@ -17,16 +34,4 @@ def serialize_srg(mappings):
             # Renamed method
             renamed.get_internal_name(),
             renamed.get_method_signature()
-        ])
-    for original, renamed in mappings.fields.items():
-        yield " ".join([
-            "FD:",
-            original.get_internal_name(),
-            renamed.get_internal_name()
-        ])
-    for original, renamed in mappings.classes.items():
-        yield " ".join([
-            "CL:",
-            original.get_internal_name(),
-            renamed.get_internal_name()
         ])
