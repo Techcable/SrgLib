@@ -26,6 +26,7 @@ class Type(object):
             if not srg.is_valid_type(name):
                 raise ValueError("Invalid name " + name)
             self._name = name
+            self._internal_name = name.replace(".", "/")
 
     def get_internal_name(self):
         """
@@ -36,7 +37,7 @@ class Type(object):
 
         :return: the internal name
         """
-        return self.get_name().replace(".", "/")
+        return self._internal_name
 
     def get_descriptor(self):
         """
@@ -52,9 +53,10 @@ class Type(object):
 
         :return: the name of this type
         """
-        if not hasattr(self, "_name"):
+        try:
+            return self._name
+        except KeyError:
             raise NotImplementedError("This type has not been named")
-        return self._name
 
     def get_simple_name(self):
         """

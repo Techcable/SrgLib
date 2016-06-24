@@ -25,11 +25,11 @@ class MethodData(object):
         """
         Get the internal name of this method
 
-        Internal mehod names are in the format ${internal type name}/${method name}
+        Internal method names are in the format ${internal type name}/${method name}
 
         :return: the internal method name
         """
-        return self.type.get_internal_name() + "/" + self.name
+        return '{}/{}'.format(self.type.get_internal_name(), self.name)
 
     def get_method_signature(self):
         """
@@ -37,21 +37,17 @@ class MethodData(object):
 
         :return: this method's signature
         """
-        signature = "("
-        for arg in self.args:
-            signature += arg.get_descriptor()
-        signature += ")"
-        signature += self.return_type.get_descriptor()
-        return signature
+        return '({}){}'.format(''.join([arg.get_descriptor() for arg in self.args]), self.return_type.get_descriptor())
 
     def __hash__(self):
-        return hash((self.get_internal_name(), self.args, self.return_type))
+        return hash(self.type.get_name()) ^ hash(self.name) + len(self.args)
 
     def __eq__(self, other):
         return isinstance(other, MethodData)\
-               and self.get_internal_name() == other.get_internal_name()\
-               and self.args == other.args\
-               and self.return_type == other.return_type
+                and self.name == self.name\
+                and self.type == other.type\
+                and self.args == other.args\
+                and self.return_type == other.return_type
 
     def __repr__(self):
         return self.get_internal_name() + " " + self.get_method_signature()
