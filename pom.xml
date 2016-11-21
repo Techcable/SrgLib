@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.techcable</groupId>
     <artifactId>srglib</artifactId>
-    <version>0.1.0-alpha1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <properties>
         <java.version>1.8</java.version>
     </properties>
@@ -41,4 +41,15 @@
             </plugin>
         </plugins>
     </build>
+
+    <distributionManagement>
+        <repository>
+            <id>techcable-repo</id>
+            <url>https://repo.techcable.net/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>techcable-repo</id>
+            <url>https://repo.techcable.net/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
