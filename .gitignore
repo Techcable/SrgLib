@@ -121,3 +121,6 @@ target/
 
 # A big file I use to test performance:
 joined.srg
+
+# Maven
+target
