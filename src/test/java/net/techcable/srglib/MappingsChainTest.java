@@ -40,6 +40,11 @@ public class MappingsChainTest {
                                         "FD: Server/a Server/ticks",
                                         "MD: Server/a ()V Server/tick ()V"
                                 ),
+                                MappingsFormat.SEARGE_FORMAT.parseLines(
+                                        "CL: ForgetfulClass me/stupid/ChangedMind",
+                                        "FD: World/time World/numTicks",
+                                        "MD: World/tick ()V World/pulse ()V"
+                                ),
                                 Mappings.createPackageMappings(ImmutableMap.of("", "net.minecraft.server"))
                         },
                         MappingsFormat.SEARGE_FORMAT.parseLines(
@@ -48,12 +53,12 @@ public class MappingsChainTest {
                                 "CL: ac net/minecraft/server/EntityPlayer",
                                 "CL: ad net/minecraft/server/World",
                                 "CL: ae net/minecraft/server/Server",
-                                "CL: af net/minecraft/server/ForgetfulClass",
+                                "CL: af me/stupid/ChangedMind",
                                 "FD: aa/a net/minecraft/server/Entity/dead",
                                 "MD: ab/a (Lab;)V net/minecraft/server/Cow/love (Lnet/minecraft/server/Cow;)V",
                                 "MD: ac/a (Ljava/lang/String;)V net/minecraft/server/EntityPlayer/disconnect (Ljava/lang/String;)V",
-                                "FD: ad/a net/minecraft/server/World/time",
-                                "MD: ad/a ()V net/minecraft/server/World/tick ()V",
+                                "FD: ad/a net/minecraft/server/World/numTicks",
+                                "MD: ad/a ()V net/minecraft/server/World/pulse ()V",
                                 "FD: ae/a net/minecraft/server/Server/ticks",
                                 "MD: ae/a ()V net/minecraft/server/Server/tick ()V"
                         )

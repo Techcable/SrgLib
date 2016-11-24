@@ -194,21 +194,21 @@ public interface Mappings {
             // If we encounter a new name, update the 'originals' accordingly
             mapping.forEachClass((original, renamed) -> {
                 original = inverted.getNewType(original);
-                if (!originals.contains(original)) {
+                if (!originals.inverted().contains(original)) {
                     originals.putClass(renamed, original);
                     classes.put(original, renamed);
                 }
             });
             mapping.forEachField((original, renamed) -> {
                 original = inverted.getNewField(original);
-                if (!originals.contains(original)) {
+                if (!originals.inverted().contains(original)) {
                     originals.putField(renamed, original);
                     fields.put(original, renamed);
                 }
             });
             mapping.forEachMethod((original, renamed) -> {
                 original = inverted.getNewMethod(original);
-                if (!originals.contains(original)) {
+                if (!originals.inverted().contains(original)) {
                     originals.putMethod(renamed, original);
                     methods.put(original, renamed);
                 }
