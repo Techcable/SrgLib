@@ -132,9 +132,17 @@ import static java.util.Objects.*;
         return fields.keySet();
     }
 
+    private SimpleMappings inverted;
     @Override
     public MutableMappings inverted() {
-        return new SimpleMappings(classes.inverse(), methods.inverse(), fields.inverse());
+        SimpleMappings inverted = this.inverted;
+        return inverted != null ? inverted : (this.inverted = invert0());
+    }
+
+    private SimpleMappings invert0() {
+        SimpleMappings inverted = new SimpleMappings(classes.inverse(), methods.inverse(), fields.inverse());
+        inverted.inverted = this;
+        return inverted;
     }
 
     @Override

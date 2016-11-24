@@ -79,15 +79,15 @@ public final class ImmutableMappings implements Mappings {
 
     @Nullable
     private ImmutableMappings inverted;
-
     @Override
     public ImmutableMappings inverted() {
         ImmutableMappings inverted = this.inverted;
-        if (inverted == null) {
-            inverted = new ImmutableMappings(this.classes.inverse(), this.methods.inverse(), this.fields.inverse());
-            inverted.inverted = this;
-            this.inverted = inverted;
-        }
+        return inverted != null ? inverted : (this.inverted = invert0());
+    }
+
+    private ImmutableMappings invert0() {
+        ImmutableMappings inverted = new ImmutableMappings(this.classes.inverse(), this.methods.inverse(), this.fields.inverse());
+        inverted.inverted = this;
         return inverted;
     }
 
