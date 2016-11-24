@@ -1,13 +1,12 @@
 package net.techcable.srglib;
 
-import java.util.regex.Pattern;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * Static utility methods for handling srg.
  */
 public final class SrgLib {
     private SrgLib() {}
-    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[\\w_<>$]+");
 
     /**
      * Checks if the given name is a valid java identifier
@@ -17,6 +16,9 @@ public final class SrgLib {
      * @param name the name to check
      */
     public static boolean isValidIdentifier(String name) {
-        return IDENTIFIER_PATTERN.matcher(name).matches();
+        checkArgument(!name.isEmpty(), "Empty name: %s", name);
+        return Character.isJavaIdentifierStart(name.codePointAt(0)) && name.codePoints()
+                .skip(1) // Skip the first char, since we already checked it
+                .allMatch(Character::isJavaIdentifierPart);
     }
 }
