@@ -1,7 +1,9 @@
 package net.techcable.srglib.mappings;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 
 import com.google.common.base.MoreObjects;
@@ -10,6 +12,7 @@ import com.google.common.collect.ImmutableBiMap;
 import net.techcable.srglib.FieldData;
 import net.techcable.srglib.JavaType;
 import net.techcable.srglib.MethodData;
+import net.techcable.srglib.SrgLib;
 import net.techcable.srglib.utils.ImmutableMaps;
 
 import static com.google.common.base.Preconditions.*;
@@ -19,7 +22,7 @@ public final class ImmutableMappings implements Mappings {
     private final ImmutableBiMap<JavaType, JavaType> classes;
     private final ImmutableBiMap<MethodData, MethodData> methods;
     private final ImmutableBiMap<FieldData, FieldData> fields;
-    /* package */ static final ImmutableMappings EMPTY = create(ImmutableBiMap.of(), ImmutableBiMap.of(), ImmutableBiMap.of());
+    /* package */ static final ImmutableMappings EMPTY = new ImmutableMappings(ImmutableBiMap.of(), ImmutableBiMap.of(), ImmutableBiMap.of());
 
     private ImmutableMappings(
             ImmutableBiMap<JavaType, JavaType> classes,
@@ -91,12 +94,56 @@ public final class ImmutableMappings implements Mappings {
         return inverted;
     }
 
+    public static ImmutableMappings copyOf(
+            Map<JavaType, JavaType> originalClasses,
+            Map<MethodData, String> methodNames,
+            Map<FieldData, String> fieldNames
+    ) {
+        ImmutableBiMap<JavaType, JavaType> classes = ImmutableBiMap.copyOf(originalClasses); // Defensive copy to an ImmutableBiMap
+        // No consistency check needed since we're building type-information from scratch
+        ImmutableBiMap.Builder<MethodData, MethodData> methods = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<FieldData, FieldData> fields = ImmutableBiMap.builder();
+        methodNames.forEach((originalData, newName) -> {
+            MethodData newData = originalData
+                    .mapTypes((oldType) -> oldType.mapClass(oldClass -> classes.getOrDefault(oldClass, oldClass)))
+                    .withName(newName);
+            methods.put(originalData, newData);
+        });
+        fieldNames.forEach((originalData, newName) -> {
+            FieldData newData = FieldData.create(
+                    originalData.getDeclaringType().mapClass(oldClass -> classes.getOrDefault(oldClass, oldClass)),
+                    newName
+            );
+            fields.put(originalData, newData);
+        });
+        return new ImmutableMappings(
+                ImmutableBiMap.copyOf(classes),
+                methods.build(),
+                fields.build()
+        );
+    }
+
+    /**
+     * Create new ImmutableMappings with the specified data.
+     * <p>
+     * NOTE: {@link #copyOf(Map, Map, Map)} may be preferable,
+     * as it automatically remaps method signatures for you.
+     * </p>
+     *
+     * @param classes the class data mappings
+     * @param methods the method data mappings
+     * @param fields the field data mappings
+     * @throws IllegalArgumentException if any of the types in the fields or methods don't match the type data
+     * @return immutable mappings with the specified data
+     */
     public static ImmutableMappings create(
             ImmutableBiMap<JavaType, JavaType> classes,
             ImmutableBiMap<MethodData, MethodData> methods,
             ImmutableBiMap<FieldData, FieldData> fields
     ) {
-        return new ImmutableMappings(classes, methods, fields);
+        ImmutableMappings result = new ImmutableMappings(classes, methods, fields);
+        SrgLib.checkConsistency(result);
+        return result;
     }
 
     public static ImmutableMappings copyOf(Mappings other) {

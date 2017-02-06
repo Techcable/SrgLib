@@ -64,6 +64,7 @@ public class MappingsFormatTest {
     @Test
     public void testParse() {
         Mappings result = mappingsFormat.parseLines(testLines);
+        SrgLib.checkConsistency(result.snapshot());
         assertEquals("net.techcable.xray.XRay", result.getNewClass("org.spigotmc.XRay").getName());
         assertEquals("net.techcable.minecraft.Player", result.getNewClass("obf4").getName());
         assertEquals(

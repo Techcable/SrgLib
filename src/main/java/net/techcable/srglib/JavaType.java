@@ -1,6 +1,7 @@
 package net.techcable.srglib;
 
 import java.util.Locale;
+import java.util.function.UnaryOperator;
 import javax.annotation.Nonnull;
 
 import static com.google.common.base.Preconditions.*;
@@ -75,6 +76,19 @@ public interface JavaType {
     }
 
     JavaTypeSort getSort();
+
+    /**
+     * Apply the specified mapping to this type, based on its class name.
+     * <p>
+     * If type is an array, it remaps the innermost element type.
+     * If the type is a class, it invokes the specified function
+     * If the type is a primitive, it returns the same element type.
+     * </p>
+     *
+     * @param func the mapping function to apply to this type
+     * @return the new type
+     */
+    JavaType mapClass(UnaryOperator<JavaType> func);
 
     /**
      * Return this reference type's package, or an empty string if in the default package.

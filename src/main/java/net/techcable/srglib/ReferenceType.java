@@ -1,5 +1,6 @@
 package net.techcable.srglib;
 
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 import static java.util.Objects.*;
@@ -21,6 +22,11 @@ import static java.util.Objects.*;
     @Override
     public JavaTypeSort getSort() {
         return JavaTypeSort.REFERENCE_TYPE;
+    }
+
+    @Override
+    public JavaType mapClass(UnaryOperator<JavaType> func) {
+        return func.apply(this);
     }
 
     @Override

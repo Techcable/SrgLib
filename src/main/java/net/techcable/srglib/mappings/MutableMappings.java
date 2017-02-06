@@ -1,8 +1,14 @@
 package net.techcable.srglib.mappings;
 
+import java.util.HashMap;
+
+import com.google.common.collect.HashBiMap;
+
 import net.techcable.srglib.FieldData;
 import net.techcable.srglib.JavaType;
 import net.techcable.srglib.MethodData;
+
+import static com.google.common.base.Preconditions.*;
 
 /**
  * Mappings that can be modified
@@ -29,17 +35,23 @@ public interface MutableMappings extends Mappings {
      * @param renamed the new method data
      * @throws IllegalArgumentException if the signatures mismatch
      */
-    void putMethod(MethodData original, MethodData renamed);
+    default void putMethod(MethodData original, MethodData renamed) {
+        checkArgument(
+                original.mapTypes(this::getNewType).hasSameTypes(renamed),
+                "Remapped method data types (%s) don't correspond to original types (%s)",
+                renamed,
+                original
+        );
+        putMethod(original, renamed.getName());
+    }
 
     /**
-     * Set the method's new name, remapping the signature to the new type names.
+     * Set the method's new name.
      *
      * @param original the original method data
      * @param newName the new method name
      */
-    default void putMethod(MethodData original, String newName) {
-        putMethod(original, original.withName(newName));
-    }
+    void putMethod(MethodData original, String newName);
 
     /**
      * Set a fields's new name, ensuring the signatures match.
@@ -52,7 +64,15 @@ public interface MutableMappings extends Mappings {
      * @param renamed the new method data
      * @throws IllegalArgumentException if the signatures mismatch
      */
-    void putField(FieldData original, FieldData renamed);
+    default void putField(FieldData original, FieldData renamed) {
+        checkArgument(
+                original.mapTypes(this::getNewType).hasSameTypes(renamed),
+                "Remapped field data (%s) doesn't correspond to original types (%s)",
+                renamed,
+                original
+        );
+        putField(original, renamed.getName());
+    }
 
     /**
      * Set a fields's new name.
@@ -60,21 +80,18 @@ public interface MutableMappings extends Mappings {
      * @param original the original method data
      * @param newName the new name
      */
-    default void putField(FieldData original, String newName) {
-        putField(original, original.mapTypes(this::getNewType).withName(newName));
-    }
-
+    void putField(FieldData original, String newName);
 
     /**
-     * Return an inverted view of the mappings, switching the original and renamed.
+     * Return an inverted copy of the mappings, switching the original and renamed.
      * <p>
-     * Changes in this mapping will be reflected in the resulting view, and vice versa.
+     * Changes in this mapping will <b>not</b> be reflected in the resulting view
      * </p>
      *
-     * @return an inverted view
+     * @return an inverted copy
      */
     @Override
-    MutableMappings inverted();
+    Mappings inverted();
 
     /**
      * Create a new mutable mappings object, with no contents.
@@ -82,6 +99,6 @@ public interface MutableMappings extends Mappings {
      * @return a new mutable mappings
      */
     static MutableMappings create() {
-        return SimpleMappings.create();
+        return new SimpleMappings(HashBiMap.create(), new HashMap<>(), new HashMap<>());
     }
 }

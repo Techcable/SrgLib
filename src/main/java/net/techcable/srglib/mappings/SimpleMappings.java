@@ -1,13 +1,10 @@
 package net.techcable.srglib.mappings;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.ImmutableBiMap;
 
 import net.techcable.srglib.FieldData;
 import net.techcable.srglib.JavaType;
@@ -18,35 +15,17 @@ import static java.util.Objects.*;
 
 /* package */ class SimpleMappings implements MutableMappings {
     private final BiMap<JavaType, JavaType> classes;
-    private final BiMap<MethodData, MethodData> methods;
-    private final BiMap<FieldData, FieldData> fields;
+    private final Map<MethodData, String> methodNames;
+    private final Map<FieldData, String> fieldNames;
 
-    private SimpleMappings(
+    /* package */ SimpleMappings(
             BiMap<JavaType, JavaType> classes,
-            BiMap<MethodData, MethodData> methods,
-            BiMap<FieldData, FieldData> fields
+            Map<MethodData, String> methodNames,
+            Map<FieldData, String> fieldNames
     ) {
         this.classes = requireNonNull(classes, "Null types");
-        this.methods = requireNonNull(methods, "Null methods");
-        this.fields = requireNonNull(fields, "Null fields");
-    }
-
-    /* package */
-    static MutableMappings create() {
-        return create(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
-    }
-
-    /* package */
-    static MutableMappings create(
-            Map<JavaType, JavaType> initialClasses,
-            Map<MethodData, MethodData> initialMethods,
-            Map<FieldData, FieldData> initialFields
-    ) {
-        return new SimpleMappings(
-                HashBiMap.create(initialClasses),
-                HashBiMap.create(initialMethods),
-                HashBiMap.create(initialFields)
-        );
+        this.methodNames = requireNonNull(methodNames, "Null methods");
+        this.fieldNames = requireNonNull(fieldNames, "Null fields");
     }
 
     @Override
@@ -61,25 +40,13 @@ import static java.util.Objects.*;
     }
 
     @Override
-    public void putMethod(MethodData original, MethodData renamed) {
-        checkArgument(
-                original.mapTypes(this::getNewType).hasSameTypes(renamed),
-                "Remapped method data types (%s) don't correspond to original types (%s)",
-                renamed,
-                original
-        );
-        methods.put(original, renamed);
+    public void putMethod(MethodData original, String newName) {
+        methodNames.put(checkNotNull(original, "Null original"), checkNotNull(newName, "Null newName"));
     }
 
     @Override
-    public void putField(FieldData original, FieldData renamed) {
-        checkArgument(
-                original.mapTypes(this::getNewType).hasSameTypes(renamed),
-                "Remapped field data (%s) doesn't correspond to original types (%s)",
-                renamed,
-                original
-        );
-        fields.put(original, renamed);
+    public void putField(FieldData original, String newName) {
+        fieldNames.put(checkNotNull(original, "Null original"), checkNotNull(newName, "Null newName"));
     }
 
     @Override
@@ -90,30 +57,22 @@ import static java.util.Objects.*;
 
     @Override
     public MethodData getNewMethod(MethodData original) {
-        MethodData result = methods.get(requireNonNull(original));
-        if (result != null) {
-            return result;
-        } else {
-            return original.mapTypes(this::getNewType);
-        }
+        String newName = methodNames.getOrDefault(original, original.getName());
+        return original.mapTypes(this::getNewType).withName(newName);
     }
 
     @Override
     public FieldData getNewField(FieldData original) {
-        FieldData result = fields.get(requireNonNull(original));
-        if (result != null) {
-            return result;
-        } else {
-            return original.mapTypes(this::getNewType);
-        }
+        String newName = fieldNames.getOrDefault(original, original.getName());
+        return FieldData.create(getNewType(original.getDeclaringType()), newName);
     }
 
     @Override
     public ImmutableMappings snapshot() {
-        return ImmutableMappings.create(
-                ImmutableBiMap.copyOf(this.classes),
-                ImmutableBiMap.copyOf(this.methods),
-                ImmutableBiMap.copyOf(this.fields)
+        return ImmutableMappings.copyOf(
+                this.classes,
+                this.methodNames,
+                this.fieldNames
         );
     }
 
@@ -124,25 +83,17 @@ import static java.util.Objects.*;
 
     @Override
     public Set<MethodData> methods() {
-        return methods.keySet();
+        return methodNames.keySet();
     }
 
     @Override
     public Set<FieldData> fields() {
-        return fields.keySet();
+        return fieldNames.keySet();
     }
 
-    private SimpleMappings inverted;
     @Override
-    public MutableMappings inverted() {
-        SimpleMappings inverted = this.inverted;
-        return inverted != null ? inverted : (this.inverted = invert0());
-    }
-
-    private SimpleMappings invert0() {
-        SimpleMappings inverted = new SimpleMappings(classes.inverse(), methods.inverse(), fields.inverse());
-        inverted.inverted = this;
-        return inverted;
+    public Mappings inverted() {
+        return snapshot().inverted();
     }
 
     @Override
@@ -152,12 +103,18 @@ import static java.util.Objects.*;
 
     @Override
     public void forEachMethod(BiConsumer<MethodData, MethodData> action) {
-        methods.forEach(action);
+        methodNames.forEach((originalData, newName) -> {
+            MethodData newData = originalData.mapTypes(this::getNewType).withName(newName);
+            action.accept(originalData, newData);
+        });
     }
 
     @Override
     public void forEachField(BiConsumer<FieldData, FieldData> action) {
-        fields.forEach(action);
+        fieldNames.forEach((originalData, newName) -> {
+            FieldData newData = FieldData.create(getNewType(originalData.getDeclaringType()), newName);
+            action.accept(originalData, newData);
+        });
     }
 
     @Override
@@ -166,7 +123,7 @@ import static java.util.Objects.*;
         if (otherObj == null) return false;
         if (otherObj.getClass() == SimpleMappings.class) {
             SimpleMappings other = (SimpleMappings) otherObj;
-            return classes.equals(other.classes) && methods.equals(other.methods) && fields.equals(other.fields);
+            return classes.equals(other.classes) && methodNames.equals(other.methodNames) && fieldNames.equals(other.fieldNames);
         } else if (otherObj instanceof Mappings) {
             return this.snapshot().equals(((Mappings) otherObj).snapshot());
         } else {
@@ -177,8 +134,8 @@ import static java.util.Objects.*;
     @Override
     public int hashCode() {
         int result = classes.hashCode();
-        result = 31 * result + methods.hashCode();
-        result = 31 * result + fields.hashCode();
+        result = 31 * result + methodNames.hashCode();
+        result = 31 * result + fieldNames.hashCode();
         return result;
     }
 

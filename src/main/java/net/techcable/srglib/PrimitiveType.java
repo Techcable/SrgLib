@@ -1,5 +1,6 @@
 package net.techcable.srglib;
 
+import java.util.function.UnaryOperator;
 import javax.annotation.Nonnull;
 
 /**
@@ -39,6 +40,10 @@ public enum PrimitiveType implements JavaType {
         return JavaTypeSort.PRIMITIVE_TYPE;
     }
 
+    @Override
+    public JavaType mapClass(UnaryOperator<JavaType> func) {
+        return this;
+    }
 
     private final char descriptorChar;
     /* private */ PrimitiveType(char descriptorChar) {

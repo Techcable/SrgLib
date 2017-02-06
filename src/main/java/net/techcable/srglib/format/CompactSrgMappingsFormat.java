@@ -2,6 +2,7 @@ package net.techcable.srglib.format;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.annotation.Nonnull;
@@ -69,7 +70,7 @@ import net.techcable.srglib.mappings.Mappings;
     }
 
     /* package */ static class SrgLineProcessor implements LineProcessor<Mappings> {
-        private final ImmutableBiMap.Builder<JavaType, JavaType> types = ImmutableBiMap.builder();
+        private final Map<JavaType, JavaType> types = new LinkedHashMap<>();
         // We have to queue the methods and fields, since the signatures of the renamed types need to be remapped
         private final Map<MethodData, String> methods = new LinkedHashMap<>();
         private final Map<FieldData, String> fields = new LinkedHashMap<>();
@@ -112,7 +113,7 @@ import net.techcable.srglib.mappings.Mappings;
 
         @Override
         public Mappings getResult() {
-            ImmutableBiMap<JavaType, JavaType> types = this.types.build();
+            ImmutableBiMap<JavaType, JavaType> types = ImmutableBiMap.copyOf(this.types);
             ImmutableBiMap.Builder<MethodData, MethodData> methods = ImmutableBiMap.builder();
             ImmutableBiMap.Builder<FieldData, FieldData> fields = ImmutableBiMap.builder();
             this.methods.forEach((originalData, newName) -> methods.put(originalData, originalData

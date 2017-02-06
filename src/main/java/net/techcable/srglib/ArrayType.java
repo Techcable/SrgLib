@@ -1,5 +1,7 @@
 package net.techcable.srglib;
 
+import java.util.function.UnaryOperator;
+
 import static java.util.Objects.*;
 
 /**
@@ -41,29 +43,41 @@ import static java.util.Objects.*;
         return elementType.getName() + "[]";
     }
 
-    private JavaType innermostType;
-    private JavaType getInnermostType() {
-        if (innermostType == null) {
-            JavaType innermostType = this.elementType;
-            while (innermostType instanceof ArrayType) {
-                innermostType = ((ArrayType) innermostType).elementType;
-            }
-            this.innermostType = innermostType;
+    @Override
+    public JavaType mapClass(UnaryOperator<JavaType> func) {
+        int dimensions = 1;
+        JavaType elementType = this.getElementType();
+        while (elementType.isArrayType()) {
+            elementType = elementType.getElementType();
+            dimensions += 1;
         }
-        return innermostType;
+        return JavaType.createArray(dimensions, elementType.mapClass(func));
     }
 
+    private int hashCode = 0;
     @Override
     public int hashCode() {
-        // Invert the bits to distribute it better
-        return ~getInnermostType().hashCode();
+        int hashCode = this.hashCode;
+        if (hashCode == 0) {
+            JavaType innermostType = this.elementType;
+            int dimensions = 1;
+            while (innermostType instanceof ArrayType) {
+                innermostType = ((ArrayType) innermostType).elementType;
+                dimensions++;
+            }
+            hashCode = dimensions + ~innermostType.hashCode();
+            if (hashCode == 0) hashCode = 1; // Make sure it's not zero so we never trigger again
+            this.hashCode = hashCode;
+        }
+        return hashCode;
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj == this || obj != null
                 && obj.getClass() == ArrayType.class
-                && this.getInnermostType().equals(((ArrayType) obj).getInnermostType());
+                && obj.hashCode() == this.hashCode()
+                && this.getElementType().equals(((ArrayType) obj).getElementType());
     }
 
     @Override

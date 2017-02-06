@@ -1,11 +1,16 @@
 package net.techcable.srglib.mappings;
 
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -45,7 +50,7 @@ public interface Mappings {
 
 
     /**
-     * Get the remapped type, given the original type, or the original if the ty is found.
+     * Get the remapped type, given the original type, or the original if the type is found.
      * <p>
      * If type is an array, it remaps the innermost element type.
      * If the type is a class, the result is the same as invoking {@link #getNewClass(JavaType)}
@@ -56,22 +61,7 @@ public interface Mappings {
      * @return the new type
      */
     default JavaType getNewType(JavaType original) {
-        switch (requireNonNull(original, "Null type").getSort()) {
-            case ARRAY_TYPE:
-                int dimensions = 1;
-                JavaType elementType = original.getElementType();
-                while (elementType.isArrayType()) {
-                    elementType = elementType.getElementType();
-                    dimensions += 1;
-                }
-                return JavaType.createArray(dimensions, getNewType(elementType));
-            case REFERENCE_TYPE:
-                return getNewClass(original);
-            case PRIMITIVE_TYPE:
-                return original;
-            default:
-                throw new AssertionError();
-        }
+        return requireNonNull(original, "Null type").mapClass(this::getNewClass);
     }
 
     /**
@@ -108,14 +98,13 @@ public interface Mappings {
     }
 
     /**
-     * Return an inverted view of the mappings, switching the original and renamed.
+     * Return an inverted copy of the mappings, switching the original and renamed.
      * <p>
-     * If this mapping's underlying source is mutable,
-     * changes in this mapping will be reflected in the resulting view,
-     * and vice versa.
+     * Even if this mapping's underlying source is mutable,
+     * changes in this mapping will not be reflected in the resulting view.
      * </p>
      *
-     * @return an inverted view
+     * @return an inverted copy
      */
     default Mappings inverted() {
         return snapshot().inverted();
@@ -168,6 +157,34 @@ public interface Mappings {
     }
 
     /**
+     * Transform all the original data in the specified mapping, using this mapping.
+     *
+     * This is useful for {@link #createRenamingMappings(UnaryOperator, Function, Function)},
+     * since renaming mappings have no 'original' data of their own, and so can't be directly output to a file.
+     * The returned mapping data is guaranteed to have the same originals as the data of the old mapping data.
+     *
+     * @return the transformed data
+     */
+    default Mappings transform(Mappings original) {
+        ImmutableBiMap.Builder<JavaType, JavaType> types = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<MethodData, MethodData> methods = ImmutableBiMap.builder();
+        ImmutableBiMap.Builder<FieldData, FieldData> fields = ImmutableBiMap.builder();
+        original.classes().forEach(originalType -> {
+            JavaType newType = this.getNewType(originalType);
+            types.put(originalType, newType);
+        });
+        original.methods().forEach(originalMethodData -> {
+            MethodData newMethodData = this.getNewMethod(originalMethodData);
+            methods.put(originalMethodData, newMethodData);
+        });
+        original.fields().forEach(originalFieldData -> {
+            FieldData newFieldData = this.getNewField(originalFieldData);
+            fields.put(originalFieldData, newFieldData);
+        });
+        return ImmutableMappings.create(types.build(), methods.build(), fields.build());
+    }
+
+    /**
      * Return an immutable empty mappings instance.
      *
      * @return an immutable empty mappings object.
@@ -181,9 +198,17 @@ public interface Mappings {
      *
      * @param mappings the mappings to chain together
      */
+    static Mappings chain(Mappings... mappings) {
+        return chain(ImmutableList.copyOf(mappings));
+    }
+
+    /**
+     * Chain the specified mappings together, using the renamed result of each mapping as the original for the next
+     *
+     * @param mappings the mappings to chain together
+     */
     static Mappings chain(ImmutableList<? extends Mappings> mappings) {
         ImmutableMappings chained = empty();
-        MutableMappings originals = MutableMappings.create();
         for (int i = 0; i < mappings.size(); i++) {
             Mappings mapping = mappings.get(i);
             ImmutableBiMap.Builder<JavaType, JavaType> classes = ImmutableBiMap.builder();
@@ -191,26 +216,22 @@ public interface Mappings {
             ImmutableBiMap.Builder<FieldData, FieldData> fields = ImmutableBiMap.builder();
             ImmutableMappings inverted = chained.inverted();
 
-            // If we encounter a new name, update the 'originals' accordingly
+            // If we encounter a new name, add it to the set
             mapping.forEachClass((original, renamed) -> {
-                original = inverted.getNewType(original);
-                if (!originals.inverted().contains(original)) {
-                    originals.putClass(renamed, original);
+                if (!inverted.contains(original)) {
                     classes.put(original, renamed);
                 }
             });
             mapping.forEachField((original, renamed) -> {
-                original = inverted.getNewField(original);
-                if (!originals.inverted().contains(original)) {
-                    originals.putField(renamed, original);
-                    fields.put(original, renamed);
+                if (!inverted.contains(original)) {
+                    // We need to make sure the originals we put in the map have the oldest possible type name to remain consistent
+                    // Since inverted is a map of new->old, use the old type name if we've ever seen this class before
+                    fields.put(original.mapTypes(inverted::getNewType), renamed);
                 }
             });
             mapping.forEachMethod((original, renamed) -> {
-                original = inverted.getNewMethod(original);
-                if (!originals.inverted().contains(original)) {
-                    originals.putMethod(renamed, original);
-                    methods.put(original, renamed);
+                if (!inverted.contains(original)) {
+                    methods.put(original.mapTypes(inverted::getNewType), renamed);
                 }
             });
             // Now run all our current chain through the mapping to get our new result
@@ -237,6 +258,9 @@ public interface Mappings {
      * <p>
      * Unlike most other mappings, these mappings have no fields, methods, or classes of their own,
      * and just rename whatever they are given.
+     * In order to use them with class data, use them to {@link #transform(Mappings)} some other set of mappings.
+     * </p>
+     * <p>
      * The functions are expected to be 'pure', and always give the same output for any input.
      * The type transformer is only called for references, and can't remap primitives.
      * A 'null' transformer does nothing, and simply returns the existing name.
